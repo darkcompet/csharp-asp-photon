@@ -6,7 +6,7 @@ namespace Tool.Compet.Photon {
 	using Tool.Compet.Log;
 
 	public class DkPhotonConnector {
-		internal Dictionary<int, PhotonHub> hubs;
+		public readonly Dictionary<int, PhotonHub> hubs = new();
 
 		public WebSocket socket;
 
@@ -14,6 +14,15 @@ namespace Tool.Compet.Photon {
 			this.socket = socket;
 		}
 
+		public void Configure(Dictionary<int, PhotonHub> hubs) {
+			foreach (var (id, hub) in hubs) {
+				this.hubs.Add(id, hub);
+			}
+		}
+
+		/// Handle communication between client and server.
+		/// In detail, this method will receive message from a client,
+		/// and tell target hub sending message to clients.
 		public async Task HandleCommunication() {
 			// [Step 1. Connection established (after handshaking)]
 			// We provide 4 KB buffer for each client.

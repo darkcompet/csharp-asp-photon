@@ -1,5 +1,5 @@
 namespace Tool.Compet.Photon {
-	internal class PhotonHub {
+	public class PhotonHub {
 		public readonly int id;
 
 		public PhotonHub(int id) {
