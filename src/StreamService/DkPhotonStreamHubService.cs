@@ -20,16 +20,16 @@ namespace Tool.Compet.Photon {
 	///
 	/// How to use:
 	/// Subclass should extends this hub service, then implement services like `HandleRpcRequest()`.
-	public abstract class DkPhotonStreamHubService<TServiceRepsonse> : DkPhotonStreamHub, DkIPhotonService<TServiceRepsonse> {
+	public abstract class DkPhotonStreamHubService<TServiceRepsonse> : DkPhotonStreamHub, DkIPhotonStreamService<TServiceRepsonse> {
 		/// Handle request-method from the client.
-		private DkIPhotonService<TServiceRepsonse> service;
+		private DkIPhotonStreamService<TServiceRepsonse> service;
 
 		/// Actually, it calls response-method in the client's hub.
 		protected TServiceRepsonse response;
 
 		public DkPhotonStreamHubService(int id, PhotonStreamConnector connector) : base(id, connector) {
 			var serviceWrapper = PhotonServiceRegistry.CreateServiceWrapper(this);
-			this.service = (DkIPhotonService<TServiceRepsonse>)serviceWrapper;
+			this.service = (DkIPhotonStreamService<TServiceRepsonse>)serviceWrapper;
 			this.response = (TServiceRepsonse)serviceWrapper;
 		}
 

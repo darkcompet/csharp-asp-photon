@@ -83,6 +83,7 @@ namespace Tool.Compet.Photon {
 						ConsumeIncomingData(readBuffer.Array!, 0, inData.Count);
 						break;
 					}
+					// Just for reference.
 					// case WebSocketMessageType.Text: {
 					// 	var inMessage = Encoding.UTF8.GetString(buffer.Array!, 0, inResult.Count);
 					// 	var messageToClient = Encoding.UTF8.GetBytes($"server[{this.GetHashCode()}]~ client-{userId} said: {inMessage}");
@@ -104,6 +105,7 @@ namespace Tool.Compet.Photon {
 			}
 		}
 
+		/// As requirement of MessagePack, we cannot make this method as async.
 		private void ConsumeIncomingData(byte[] buffer, int offset, int count) {
 			// dkopt: we should avoid copying buffer?
 			// https://github.com/neuecc/MessagePack-CSharp#be-careful-when-copying-buffers
@@ -116,8 +118,13 @@ namespace Tool.Compet.Photon {
 
 			var reader = new MessagePackReader(inData);
 			var arrLength = reader.ReadArrayHeader(); // MUST read header first, otherwise get error.
-
 			var messageType = (DkPhotonMessageType)reader.ReadByte(); // total max 256 types
+
+			if (messageType == DkPhotonMessageType.PING) {
+				SendAsync(inData);
+				return;
+			}
+
 			var hubId = reader.ReadByte(); // total max 256 hubs/connection
 			var methodId = reader.ReadInt16(); // max 64k methods/hub
 
