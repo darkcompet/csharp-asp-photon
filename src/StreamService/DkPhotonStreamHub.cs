@@ -1,13 +1,8 @@
 namespace Tool.Compet.Photon {
 	using MessagePack;
 
-	public abstract class DkPhotonHub {
-		public readonly int id;
-		public PhotonConnector connector;
-
-		public DkPhotonHub(int id, PhotonConnector connector) {
-			this.id = id;
-			this.connector = connector;
+	public abstract class DkPhotonStreamHub : PhotonHub {
+		public DkPhotonStreamHub(int id, PhotonStreamConnector connector) : base(id, connector) {
 		}
 
 		internal async Task SendAsync(int methodId, object msgPackObj) {

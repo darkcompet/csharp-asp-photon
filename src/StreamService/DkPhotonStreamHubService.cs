@@ -27,7 +27,7 @@ namespace Tool.Compet.Photon {
 		/// Actually, it calls response-method in the client's hub.
 		protected TServiceRepsonse response;
 
-		public DkPhotonStreamHubService(int id, PhotonConnector connector) : base(id, connector) {
+		public DkPhotonStreamHubService(int id, PhotonStreamConnector connector) : base(id, connector) {
 			var serviceWrapper = PhotonServiceRegistry.CreateServiceWrapper(this);
 			this.service = (DkIPhotonService<TServiceRepsonse>)serviceWrapper;
 			this.response = (TServiceRepsonse)serviceWrapper;
