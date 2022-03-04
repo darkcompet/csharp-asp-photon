@@ -1,11 +1,9 @@
 namespace Tool.Compet.Photon {
 	public abstract class PhotonHub {
 		public readonly int id;
-		public PhotonStreamConnector connector;
 
-		public PhotonHub(int id, PhotonStreamConnector connector) {
+		public PhotonHub(int id) {
 			this.id = id;
-			this.connector = connector;
 		}
 	}
 }

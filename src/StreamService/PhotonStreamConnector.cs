@@ -1,39 +1,44 @@
 namespace Tool.Compet.Photon {
 	using System;
-	using System.Collections.Generic;
 	using System.Net.WebSockets;
 	using MessagePack;
 
 	/// Websocket: https://sookocheff.com/post/networking/how-do-websockets-work/
 	public class PhotonStreamConnector : PhotonConnector {
-		/// Be released when the client get disconnected.
-		/// This will be passed to target hub at construct time.
-		private object client;
-
 		/// Raw communicator (send/receive) between server and the client.
 		/// Be released when the client get disconnected.
 		private WebSocket socket;
 
-		public PhotonStreamConnector(object client, WebSocket socket) {
-			this.client = client;
+		/// Holds all termina-hubs for communication between server and the client.
+		/// The first dimension is for hubId, the second dimension is for terminalId.
+		/// Note that, in both client and server side, each terminal-hub is
+		/// associated with an hub service. And a terminal-hub at client/server will communicate with
+		/// companion terminal-hub at server/client. They detect opposite one via [hubId, terminalId].
+		public readonly DkPhotonStreamHub[][] hubs;
+
+		public PhotonStreamConnector(WebSocket socket) {
 			this.socket = socket;
+			this.hubs = new DkPhotonStreamHub[PhotonStreamServiceRegistry.STREAM_HUB_SERVICE_COUNT][];
+		}
 
-			// [Configure hub, connector and client]
-			var hubList = new List<PhotonHub>();
+		public void Configure(DkPhotonStreamClientInfo client) {
+			// To communicate with terminal-hub from the client, for each hub, we create all pref-defined
+			// terminal-hub list  which have same hubId, but different terminalId.
+			// If some terminal-hub X come from the client, then X will
+			// pair with some defined terminal-hub that be associated with the hub in server.
+			var genHubTypes = PhotonStreamServiceRegistry.GeneratedStreamHubServiceTypes();
+			for (int hubId = 0, hubCount = genHubTypes.Length; hubId < hubCount; ++hubId) {
+				var terminalCount = PhotonStreamServiceRegistry.TerminalCount(hubId);
+				var terminalHubs = hubs[hubId] = new DkPhotonStreamHub[terminalCount];
 
-			foreach (var (hubId, hubType) in PhotonServiceRegistry.AppHubServiceTypes()) {
-				// Create new hubs for the client.
-				var hub = Activator.CreateInstance(hubType, hubId, client, this) as PhotonHub;
-				if (hub == null) {
-					throw new Exception($"Could not create hub instance of: {hubType.Name}");
+				for (int terminalId = 0; terminalId < terminalCount; ++terminalId) {
+					// Each terminal-hub in server contains hubId and terminalId.
+					var genHub = Activator.CreateInstance(genHubTypes[hubId], terminalId, client, this) as DkPhotonStreamHub;
+					if (genHub == null) {
+						throw new Exception($"Could not create terminal hub: `{genHubTypes[hubId].Name}`");
+					}
+					terminalHubs[terminalId] = genHub;
 				}
-				hubList.Add(hub);
-			}
-
-			// Register hubs
-			var hubs = this.hubs;
-			foreach (var hub in hubList) {
-				hubs[hub.id] = hub;
 			}
 		}
 
@@ -111,8 +116,8 @@ namespace Tool.Compet.Photon {
 			// https://github.com/neuecc/MessagePack-CSharp#be-careful-when-copying-buffers
 			//
 			// Format of inData:
-			// Service: [messageType(byte), hubId(byte), methodId(short), parameters(msgPackObject)]
-			// RPC    : [messageType(byte), hubId(byte), methodId(short), rpcTarget(byte), parameters(msgPackObject)]
+			// Service: [messageType(byte), hubId(byte), classId (byte), methodId(short), parameters(msgPackObj)]
+			// RPC    : [messageType(byte), hubId(byte), classId (byte), methodId(short), rpcTarget(byte), parameters(msgPackObj)]
 			var inData = new byte[count];
 			Array.Copy(buffer, offset, inData, 0, count);
 
@@ -120,25 +125,26 @@ namespace Tool.Compet.Photon {
 			var arrLength = reader.ReadArrayHeader(); // MUST read header first, otherwise get error.
 			var messageType = (DkPhotonMessageType)reader.ReadByte(); // total max 256 types
 
+			// For ping operation, just pong.
 			if (messageType == DkPhotonMessageType.PING) {
 				SendAsync(inData);
 				return;
 			}
 
 			var hubId = reader.ReadByte(); // total max 256 hubs/connection
+			var terminalId = reader.ReadByte(); // total max 256 terminals/hub
 			var methodId = reader.ReadInt16(); // max 64k methods/hub
-
-			var hub = (IPhotonService)this.hubs[hubId];
+			var terminalHub = (DkPhotonStreamHub)this.hubs[hubId][terminalId]; // always exists
 
 			switch (messageType) {
 				case DkPhotonMessageType.SERVICE: {
 					var paramsOffset = (int)reader.Consumed;
-					hub.HandleServiceRequest(methodId, inData, paramsOffset, count - paramsOffset);
+					terminalHub.HandleServiceRequest(methodId, inData, paramsOffset, count - paramsOffset);
 					break;
 				}
 				case DkPhotonMessageType.RPC: {
 					var rpcTarget = (DkPhotonRpcTarget)reader.ReadByte();
-					hub.HandleRpcRequest(rpcTarget, inData);
+					terminalHub.HandleRpcRequest(rpcTarget, inData);
 					break;
 				}
 				default: {
@@ -148,8 +154,7 @@ namespace Tool.Compet.Photon {
 		}
 
 		/// Called when the client disconnected from us.
-		public void OnDisconnected() {
-			this.client = null;
+		public void OnDisconnect() {
 			this.socket = null;
 		}
 	}
