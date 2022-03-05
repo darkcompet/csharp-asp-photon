@@ -16,12 +16,13 @@ namespace Tool.Compet.Photon {
 		/// companion terminal-hub at server/client. They detect opposite one via [hubId, terminalId].
 		public readonly DkPhotonStreamHub[][] hubs;
 
-		public PhotonStreamConnector(WebSocket socket) {
+		public PhotonStreamConnector(WebSocket socket, DkPhotonStreamClientInfo client) {
 			this.socket = socket;
 			this.hubs = new DkPhotonStreamHub[PhotonStreamServiceRegistry.STREAM_HUB_SERVICE_COUNT][];
-		}
 
-		public void Configure(DkPhotonStreamClientInfo client) {
+			// Pass connector for the client.
+			client.connector = this;
+
 			// To communicate with terminal-hub from the client, for each hub, we create all pref-defined
 			// terminal-hub list  which have same hubId, but different terminalId.
 			// If some terminal-hub X come from the client, then X will
@@ -35,7 +36,7 @@ namespace Tool.Compet.Photon {
 					// Each terminal-hub in server contains hubId and terminalId.
 					var genHub = Activator.CreateInstance(genHubTypes[hubId], terminalId, client, this) as DkPhotonStreamHub;
 					if (genHub == null) {
-						throw new Exception($"Could not create terminal hub: `{genHubTypes[hubId].Name}`");
+						throw new Exception($"Could not create hub: `{genHubTypes[hubId].Name}`");
 					}
 					terminalHubs[terminalId] = genHub;
 				}
@@ -96,6 +97,7 @@ namespace Tool.Compet.Photon {
 					// 	break;
 					// }
 					case WebSocketMessageType.Close: {
+						// dkask: Send to client again??
 						await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
 						break;
 					}
