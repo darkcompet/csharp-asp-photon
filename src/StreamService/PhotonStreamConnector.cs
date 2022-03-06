@@ -63,7 +63,7 @@ namespace Tool.Compet.Photon {
 
 		/// Close connection with the client.
 		public async Task CloseAsync(string? message = null) {
-			await socket.CloseAsync(
+			await this.socket.CloseAsync(
 				closeStatus: WebSocketCloseStatus.NormalClosure,
 				statusDescription: message,
 				cancellationToken: CancellationToken.None

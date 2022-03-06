@@ -12,7 +12,7 @@ namespace Tool.Compet.Photon {
 		public readonly int terminalId;
 		public PhotonStreamConnector connector;
 
-		public DkPhotonStreamHub(int id, int terminalId, object client, PhotonStreamConnector connector) : base(id) {
+		public DkPhotonStreamHub(int id, int terminalId, PhotonStreamConnector connector) : base(id) {
 			this.terminalId = terminalId;
 			this.connector = connector;
 		}
