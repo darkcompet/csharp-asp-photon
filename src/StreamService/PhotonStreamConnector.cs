@@ -2,6 +2,7 @@ namespace Tool.Compet.Photon {
 	using System;
 	using System.Net.WebSockets;
 	using MessagePack;
+	using Tool.Compet.Core;
 
 	/// Websocket: https://sookocheff.com/post/networking/how-do-websockets-work/
 	public class PhotonStreamConnector : PhotonConnector {
@@ -15,6 +16,8 @@ namespace Tool.Compet.Photon {
 		/// associated with an hub service. And a terminal-hub at client/server will communicate with
 		/// companion terminal-hub at server/client. They detect opposite one via [hubId, terminalId].
 		public readonly DkPhotonStreamHub[][] hubs;
+
+		public bool connected => this.socket.State == WebSocketState.Open;
 
 		public PhotonStreamConnector(WebSocket socket, DkPhotonStreamClientInfo client) {
 			this.socket = socket;
@@ -45,29 +48,41 @@ namespace Tool.Compet.Photon {
 
 		/// Send data to client.
 		public async Task SendAsync(byte[] data) {
-			await this.socket.SendAsync(
-				buffer: new ArraySegment<byte>(data, 0, data.Length),
-				messageType: WebSocketMessageType.Binary,
-				endOfMessage: true,
-				cancellationToken: CancellationToken.None
-			);
+			// The method is also called from outside, we have to check the connection is open before send.
+			if (this.connected) {
+				await this.socket.SendAsync(
+					buffer: new ArraySegment<byte>(data, 0, data.Length),
+					messageType: WebSocketMessageType.Binary,
+					endOfMessage: true,
+					cancellationToken: CancellationToken.None
+				);
+			}
+			else {
+				if (DkBuildConfig.DEBUG) { Tool.Compet.Log.DkLogs.Debug(this, "Skip SendAsync since it is not connected"); }
+			}
 		}
 
 		/// Get data from the client.
-		public async Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer) {
-			return await this.socket.ReceiveAsync(
-				buffer: buffer,
-				cancellationToken: CancellationToken.None
-			);
-		}
+		// public async Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer) {
+		// 	return await this.socket.ReceiveAsync(
+		// 		buffer: buffer,
+		// 		cancellationToken: CancellationToken.None
+		// 	);
+		// }
 
 		/// Close connection with the client.
 		public async Task CloseAsync(string? message = null) {
-			await this.socket.CloseAsync(
-				closeStatus: WebSocketCloseStatus.NormalClosure,
-				statusDescription: message,
-				cancellationToken: CancellationToken.None
-			);
+			// The method is also called from outside, we have to check the connection is open before send.
+			if (this.connected) {
+				await this.socket.CloseAsync(
+					closeStatus: WebSocketCloseStatus.NormalClosure,
+					statusDescription: message,
+					cancellationToken: CancellationToken.None
+				);
+			}
+			else {
+				if (DkBuildConfig.DEBUG) { Tool.Compet.Log.DkLogs.Debug(this, "Skip CloseAsync since it is not connected"); }
+			}
 		}
 
 		/// Handle communication between client and server.
@@ -97,8 +112,8 @@ namespace Tool.Compet.Photon {
 					// 	break;
 					// }
 					case WebSocketMessageType.Close: {
-						// dkask: Send to client again??
-						await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+						// Nothing to do
+						// await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
 						break;
 					}
 					default: {
@@ -153,11 +168,6 @@ namespace Tool.Compet.Photon {
 					throw new Exception($"Invalid message type: {messageType}");
 				}
 			}
-		}
-
-		/// Called when the client disconnected from us.
-		public void OnDisconnect() {
-			this.socket = null;
 		}
 	}
 }
