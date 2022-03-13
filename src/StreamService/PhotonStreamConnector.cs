@@ -19,7 +19,7 @@ namespace Tool.Compet.Photon {
 
 		public bool connected => this.socket.State == WebSocketState.Open;
 
-		public PhotonStreamConnector(WebSocket socket, DkPhotonStreamClientInfo client) {
+		public PhotonStreamConnector(WebSocket socket, DkPhotonStreamClient client) {
 			this.socket = socket;
 			this.hubs = new DkPhotonStreamHub[PhotonStreamServiceRegistry.STREAM_HUB_SERVICE_COUNT][];
 

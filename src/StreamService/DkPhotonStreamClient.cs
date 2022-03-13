@@ -1,5 +1,5 @@
 namespace Tool.Compet.Photon {
-	public class DkPhotonStreamClientInfo {
+	public class DkPhotonStreamClient {
 		/// Internal set at configuration time.
 		public PhotonStreamConnector connector;
 
